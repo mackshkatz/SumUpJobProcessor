@@ -22,7 +22,7 @@ defmodule SumUpJobProcessor.Jobs do
     |> Enum.flat_map(fn task ->
       check_requires(job, task, [])
     end)
-    |> Enum.uniq
+    |> Enum.uniq()
   end
 
   defp retrieve_commands(ordered_task_list, %Job{bash_format: true, tasks: task_list}) do
@@ -44,11 +44,11 @@ defmodule SumUpJobProcessor.Jobs do
         item.name == task_name
       end)
       |> (fn matching_task ->
-        %{
-          name: matching_task.name,
-          command: matching_task.command
-        }
-      end).()
+            %{
+              name: matching_task.name,
+              command: matching_task.command
+            }
+          end).()
     end)
   end
 

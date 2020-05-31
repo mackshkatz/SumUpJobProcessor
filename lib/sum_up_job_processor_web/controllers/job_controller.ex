@@ -2,6 +2,7 @@ defmodule SumUpJobProcessorWeb.JobController do
   use SumUpJobProcessorWeb, :controller
 
   alias SumUpJobProcessor.Jobs
+
   alias SumUpJobProcessor.Jobs.{
     Job,
     Task
@@ -40,9 +41,10 @@ defmodule SumUpJobProcessorWeb.JobController do
       }
     end)
     |> (fn task_list ->
-      %Job{
-        tasks: task_list,
-        bash_format: job_params["bash"]
-      } end).()
+          %Job{
+            tasks: task_list,
+            bash_format: job_params["bash"]
+          }
+        end).()
   end
 end
