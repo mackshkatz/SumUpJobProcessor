@@ -44,7 +44,13 @@ defmodule SumUpJobProcessor.JobsTest do
   end
 
   describe "jobs" do
-    test "process_job/1 returns proper run order", %{job: job} do
+    test "process_job/1 returns error for a halted job" do
+      assert {:error, :invalid_job} = Jobs.process_job(%Job{halted: true})
+    end
+
+    test "process_job/1 returns name and command for each task in the proper run order", %{
+      job: job
+    } do
       assert [
                %{
                  name: "task-1",

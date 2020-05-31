@@ -13,36 +13,30 @@ defmodule SumUpJobProcessor.Jobs do
 
   def process_job(job = %Job{}) do
     job
-    |> determine_run_order()
-    |> retrieve_commands(job)
+    |> determine_task_order()
+    |> associate_command_with_task(job)
   end
 
-  defp determine_run_order(job = %Job{tasks: task_list}) do
+  defp determine_task_order(job = %Job{tasks: task_list}) do
     task_list
-    |> Enum.flat_map(fn task ->
-      check_requires(job, task, [])
-    end)
+    |> Enum.flat_map(fn task -> resolve_dependencies(job, task, []) end)
     |> Enum.uniq()
   end
 
-  defp retrieve_commands(ordered_task_list, %Job{bash_format: true, tasks: task_list}) do
+  defp associate_command_with_task(ordered_task_list, %Job{bash_format: true, tasks: task_list}) do
     ordered_task_list
     |> Enum.map(fn task_name ->
-      Enum.find(task_list, fn item ->
-        item.name == task_name
-      end)
+      find_task(task_list, task_name)
       |> (fn matching_task -> matching_task.command end).()
     end)
     |> (fn commands -> ["#!/usr/bin/env bash\n" | commands] end).()
     |> Enum.join("\n")
   end
 
-  defp retrieve_commands(ordered_task_list, %Job{tasks: task_list}) do
+  defp associate_command_with_task(ordered_task_list, %Job{tasks: task_list}) do
     ordered_task_list
     |> Enum.map(fn task_name ->
-      Enum.find(task_list, fn item ->
-        item.name == task_name
-      end)
+      find_task(task_list, task_name)
       |> (fn matching_task ->
             %{
               name: matching_task.name,
@@ -52,19 +46,27 @@ defmodule SumUpJobProcessor.Jobs do
     end)
   end
 
-  defp check_requires(%Job{}, %Task{name: name, requires: requires}, acc) when is_nil(requires) do
+  defp resolve_dependencies(%Job{}, %Task{name: name, requires: requires}, acc)
+       when is_nil(requires) do
     [name | acc]
   end
 
-  defp check_requires(job = %Job{tasks: task_list}, %Task{name: name, requires: requires}, acc) do
+  defp resolve_dependencies(
+         job = %Job{tasks: task_list},
+         %Task{name: name, requires: requires},
+         acc
+       ) do
     requires
     |> Enum.flat_map(fn require_task_name ->
-      required_task =
-        Enum.find(task_list, fn item ->
-          item.name == require_task_name
-        end)
+      required_task = find_task(task_list, require_task_name)
 
-      check_requires(job, required_task, [name | acc])
+      resolve_dependencies(job, required_task, [name | acc])
+    end)
+  end
+
+  defp find_task(task_list, task_name) do
+    Enum.find(task_list, fn item ->
+      item.name == task_name
     end)
   end
 end
