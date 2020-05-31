@@ -8,6 +8,6 @@ defmodule SumUpJobProcessorWeb.Router do
   scope "/api", SumUpJobProcessorWeb do
     pipe_through :api
 
-    post("/jobs", JobController, :create)
+    post "/jobs/process", JobController, :process
   end
 end
