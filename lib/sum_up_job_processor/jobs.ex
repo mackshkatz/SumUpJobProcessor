@@ -9,11 +9,12 @@ defmodule SumUpJobProcessor.Jobs do
     Task
   }
 
-  def process_job([]), do: {:error, :no_tasks}
+  def process_job(%Job{halted: true}), do: {:error, :invalid_job}
 
   def process_job(job = %Job{}) do
     job
     |> determine_run_order()
+    |> retrieve_commands(job)
   end
 
   defp determine_run_order(job = %Job{tasks: task_list}) do
@@ -22,6 +23,33 @@ defmodule SumUpJobProcessor.Jobs do
       check_requires(job, task, [])
     end)
     |> Enum.uniq
+  end
+
+  defp retrieve_commands(ordered_task_list, %Job{bash_format: true, tasks: task_list}) do
+    ordered_task_list
+    |> Enum.map(fn task_name ->
+      Enum.find(task_list, fn item ->
+        item.name == task_name
+      end)
+      |> (fn matching_task -> matching_task.command end).()
+    end)
+    |> (fn commands -> ["#!/usr/bin/env bash\n" | commands] end).()
+    |> Enum.join("\n")
+  end
+
+  defp retrieve_commands(ordered_task_list, %Job{tasks: task_list}) do
+    ordered_task_list
+    |> Enum.map(fn task_name ->
+      Enum.find(task_list, fn item ->
+        item.name == task_name
+      end)
+      |> (fn matching_task ->
+        %{
+          name: matching_task.name,
+          command: matching_task.command
+        }
+      end).()
+    end)
   end
 
   defp check_requires(%Job{}, %Task{name: name, requires: requires}, acc) when is_nil(requires) do
